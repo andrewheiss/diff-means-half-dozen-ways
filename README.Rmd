@@ -18,6 +18,10 @@ output: github_document
 knitr::opts_chunk$set(echo = TRUE, fig.retina = 2)
 ```
 
+> See the [actual blog post](https://www.andrewheiss.com/blog/2019/01/29/diff-means-half-dozen-ways/).
+
+---
+
 Taking a sample from two groups from a population and seeing if there's a significant or substantial difference between them is a standard task in statistics. Measuring performance on a test before and after some sort of intervention, measuring average GDP in two different continents, measuring average height in two groups of flowers, etc.—we like to know if any group differences we see are attributable to chance / measurement error, or if they're real.
 
 Classical frequentist statistics typically measures the difference between groups with a [t-test](https://en.wikipedia.org/wiki/Student%27s_t-test), but t-tests are 100+ years old and statistical methods have advanced a lot since 1908. Nowadays, we can use simulation and/or Bayesian methods to get richer information about the differences between two groups without worrying so much about the assumptions and preconditions for classical t-tests. 

@@ -2,6 +2,11 @@ Half a dozen frequentist and Bayesian ways to measure the difference in
 means in two groups
 ================
 
+> See the [actual blog
+> post](https://www.andrewheiss.com/blog/2019/01/29/diff-means-half-dozen-ways/).
+
+-----
+
 Taking a sample from two groups from a population and seeing if there’s
 a significant or substantial difference between them is a standard task
 in statistics. Measuring performance on a test before and after some
