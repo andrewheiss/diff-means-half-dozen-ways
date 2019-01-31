@@ -43,6 +43,7 @@ Also, this is long and really kind of meant as a general reference. Here's a tl;
    * [Regression, assuming unequal variances](#regression-assuming-unequal-variances)
    * [Regression, BEST](#regression-best)
 * [Bayesian analysis, directly with Stan](#bayesian-analysis-directly-with-stan)
+* [Regression, BEST, with priors on variables instead of difference](#regression-best-with-priors-on-variables-instead-of-difference)
 * [Comparing all methods](#comparing-all-methods)
 
 

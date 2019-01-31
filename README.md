@@ -56,6 +56,8 @@ Here’s a tl;dr table of contents:
       - [Regression, BEST](#regression-best)
   - [Bayesian analysis, directly with
     Stan](#bayesian-analysis-directly-with-stan)
+  - [Regression, BEST, with priors on variables instead of
+    difference](#regression-best-with-priors-on-variables-instead-of-difference)
   - [Comparing all methods](#comparing-all-methods)
 
 ## Data
