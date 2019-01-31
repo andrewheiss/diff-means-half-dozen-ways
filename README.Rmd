@@ -378,7 +378,7 @@ norm_ggplot <- ggplot(data = tibble(x = c(-20, 20)), aes(x = x)) +
 
 cauchy_ggplot <- ggplot(data = tibble(x = c(-5, 5)), aes(x = x)) +
   stat_function(fun = dcauchy, n = 500, args = list(location = 0, scale = 1)) +
-  labs(title = "cauchy(0, 1") +
+  labs(title = "cauchy(0, 1)") +
   theme_fancy()
 
 norm_ggplot / cauchy_ggplot
@@ -488,9 +488,84 @@ stan_best_tidy <-
 stan_best_tidy
 ```
 
-One advantage of running the analysis with raw Stan instead of forcing it into regression form is that we can have Stan calculate all sorts of stuff for us. Note how the `sigma` coefficient is already in the right scale (I estimated one sigma for both groups here, but that's not necessary). The averages for both groups get returned (`mu[1]` and `mu[2]`), along with `mu_diff`, so there's no need to combine slope and intercept terms. I also (following Kruschke and others) made it so that the Stan code returned information about effect sizes, including [Cohen's d](https://en.wikipedia.org/wiki/Effect_size#Cohen's_d), which is the standardized difference in means, and the [common language effect size (CLES)](https://janhove.github.io/reporting/2016/11/16/common-language-effect-sizes), which is the probability that a rating sampled at random from one group will be greater than a rating sampled from the other group.
+One advantage of running the analysis with raw Stan instead of forcing it into regression form is that we can have Stan calculate all sorts of stuff for us. The averages for both groups get returned (`mu[1]` and `mu[2]`), along with `mu_diff`, so there's no need to combine slope and intercept terms. Also note how the `sigma` coefficients are already in the right scale. I also (following Kruschke and others) made it so that the Stan code returned information about effect sizes, including [Cohen's d](https://en.wikipedia.org/wiki/Effect_size#Cohen's_d), which is the standardized difference in means, and the [common language effect size (CLES)](https://janhove.github.io/reporting/2016/11/16/common-language-effect-sizes), which is the probability that a rating sampled at random from one group will be greater than a rating sampled from the other group.
 
 Here, the difference in means is the same as all the other methods, but the effect size isn't terribly huge. According to Cohen's d, we have a medium effect size, and there's a 34% chance that we could randomly select an action rating from the comedy distribution.
+
+
+## Regression, BEST, with priors on variables instead of difference
+
+*(I added this section later)*
+
+In the Twitter discussion that followed this post, [Mike DeCrescenzo](https://mikedecr.github.io/) made a [fascinating point](https://twitter.com/mikedecr/status/1090416939917340672) that relying on regression for t-test-like analysis with Bayesianism actually has important theoretical implications.
+
+When specifying a model as `y ~ a + bx` as we did above with `rating ~ genre`, the coefficient for genre (`b`) is actually the difference in means and doesn't directly reflect the rating itself. In theory, if we're thinking about two groups with two different variances, we should model the distribution of each group, not the distribution of the differences in groups. Analyzing the distributions of the two groups separately and *then* calculating the difference should yield more transparent results. Plus it's easier to think about setting priors on two variables that were measured in real life (e.g. ratings for comedies and action movies), rather than setting priors on whatever the difference between those looks like.
+
+The raw Stan code above does this correctly by feeding two groups into the model rather than the difference in means. [TJ Mahr](https://twitter.com/tjmahr/status/1090417050600816641?s=21) and [Solomon Kurz's translation of Kruschke's code into **brms**](https://github.com/ASKurz/Doing-Bayesian-Data-Analysis-in-brms-and-the-tidyverse) ([see near the bottom of chapter 16](https://github.com/ASKurz/Doing-Bayesian-Data-Analysis-in-brms-and-the-tidyverse/blob/master/16.md)) both show that we can do this with **brms** by changing the formula slightly. If we suppress the intercept by running a model like `ratiing ~ 0 + genre`, **brms** returns coefficients for each of the groups (no more base case!), and these coefficients represent group means. 
+
+Here's an intercept-free version of the **brms**-based BEST regression from earlier. Note how we're modeling both the rating and the group sigmas without intercepts (`rating ~ 0 + genre, sigma ~ 0 + genre`), and that we no longer specify a prior for the intercept (if we do, `brm()` yells at us). Also note that instead of modeling the beta coefficient as a normal distribution centered around zero (since that represented the difference in means), we specify the distribution of action and comedy ratings themselves. Because we're dealing with actual ratings, we can make them fairly well informed and constrained. For instance, no movie is rated below 1 or above 10, and I'm guessing from past experience looking at ratings on Amazon and IMDB and elsewhere that people tend to inflate their ratings. I'd guess that the distribution of ratings looks something like this: normally distributed with a mean of 6, standard deviation of 2, and truncated at 1 and 10.
+
+```{r dist-ratings, fig.width=5, fig.height=2.5}
+# Cool extra thing I discovered: the msm library has rtnorm, dtnorm, and family
+# which let you plot and draw from a truncated normal distribution
+# msm::rtnorm(1000, mean = 6, sd = 2, lower = 1, upper = 10)
+ggplot(data = tibble(x = c(1, 10)), aes(x = x)) +
+  stat_function(fun = dnorm, n = 500, args = list(mean = 6, sd = 2)) +
+  labs(title = "normal(6, 2); truncated at 1 and 10") +
+  theme_fancy()
+```
+
+Now we can run the model like normal:
+
+```{r brms-unequal-robust-groups, message=FALSE, warning=FALSE, results="hide"}
+brms_uneq_robust_groups <- brm(
+  bf(rating ~ 0 + genre, sigma ~ 0 + genre), 
+  family = student,
+  data = mutate(movies_clean, genre = fct_rev(genre)),
+  prior = c(
+    # Set group mean prior
+    set_prior("normal(6, 2)", class = "b", lb = 1, ub = 10),
+    # Ser group variance priors. We keep the less informative cauchy(0, 1).
+    set_prior("cauchy(0, 1)", class = "b", dpar = "sigma"),
+    set_prior("exponential(1.0/29)", class = "nu")),
+  chains = CHAINS, iter = ITER, warmup = WARMUP, seed = BAYES_SEED,
+  file = "cache/brms_uneq_robust_groups"
+)
+```
+
+We still need to exponentiate the sigma coefficients when we're done.
+
+```{r brms-unequal-robust-fixed-show}
+brms_uneq_robust_groups_tidy <- 
+  tidyMCMC(brms_uneq_robust_groups, conf.int = TRUE, conf.level = 0.95, 
+           estimate.method = "median", conf.method = "HPDinterval") %>% 
+  # Rescale sigmas
+  mutate_at(vars(estimate, std.error, conf.low, conf.high),
+            funs(ifelse(str_detect(term, "sigma"), exp(.), .)))
+brms_uneq_robust_groups_tidy
+```
+
+Because we calculated the group means themselves, we need to do an extra few steps to get the difference in means. It's fairly easy: we extract the posterior samples for each of the groups, subtract them from each other, and then calculate the credible interval. 
+
+```{r brms-unequal-robust-fixed}
+brms_uneq_robust_groups_post <- posterior_samples(brms_uneq_robust_groups) %>% 
+  # We can exponentiate here!
+  mutate_at(vars(contains("sigma")), funs(exp)) %>% 
+  # For whatever reason, we need to log nu?
+  mutate(nu = log10(nu)) %>% 
+  mutate(diff_means = b_genreAction - b_genreComedy,
+         diff_sigma = b_sigma_genreAction - b_sigma_genreComedy) %>% 
+  # Calculate effect sizes, just for fun
+  mutate(cohen_d = diff_means / sqrt((b_sigma_genreAction + b_sigma_genreComedy)/2),
+         cles = dnorm(diff_means / sqrt((b_sigma_genreAction + b_sigma_genreComedy)), 0, 1))
+
+brms_uneq_robust_groups_tidy_fixed <- 
+  tidyMCMC(brms_uneq_robust_groups_post, conf.int = TRUE, conf.level = 0.95, 
+           estimate.method = "median", conf.method = "HPDinterval")
+brms_uneq_robust_groups_tidy_fixed
+```
+
+And voila! Difference in means based on priors on individual group means rather than differences in groups!
 
 
 ## Comparing all methods
@@ -526,6 +601,10 @@ brms_uneq_robust_small <- brms_uneq_robust_tidy %>%
   filter(term == "b_genreAction") %>% 
   select(estimate, conf.low, conf.high)
 
+brms_uneq_robust_groups_small <- brms_uneq_robust_groups_tidy_fixed %>% 
+  filter(term == "diff_means") %>% 
+  select(estimate, conf.low, conf.high)
+
 # Extract Stan results
 stan_best_small <- stan_best_tidy %>% 
   filter(term == "mu_diff") %>% 
@@ -540,6 +619,7 @@ meta_diffs <- tribble(
   "brms", "equal variances", brms_eq_small,
   "brms", "unequal variances", brms_uneq_small,
   "brms", "BEST", brms_uneq_robust_small,
+  "brms", "BEST; group means", brms_uneq_robust_groups_small,
   "Stan", "BEST", stan_best_small
 ) %>% 
   unnest(results) %>% 
