@@ -515,7 +515,7 @@ means with regression, which means we can approximate frequentist
 t-tests without writing any Stan code.
 
 [This blog post by Matti
-Vuorre](https://vuorre.netlify.com/post/2017/01/02/how-to-compare-two-groups-with-robust-bayesian-estimation-using-r-stan-and-brms/)
+Vuorre](https://vuorre.netlify.com/posts/2017/01/02/how-to-compare-two-groups-with-robust-bayesian-estimation-using-r-stan-and-brms/)
 is a masterpiece and clearly explains the rationale behind how and why
 you can use regression for t-tests. This code here is adapted from his
 stuff.
@@ -638,7 +638,7 @@ norm_ggplot / cauchy_ggplot
 
 We can also use regression to estimate the difference in means under the
 assumption that group variances are different. Here, following [Matti
-Vuorre](https://vuorre.netlify.com/post/2017/01/02/how-to-compare-two-groups-with-robust-bayesian-estimation-using-r-stan-and-brms/#equal-variances-model),
+Vuorre](https://vuorre.netlify.com/posts/2017/01/02/how-to-compare-two-groups-with-robust-bayesian-estimation-using-r-stan-and-brms/#equal-variances-model),
 we need to model the variance (or sigma) in each group, and we need to
 specify a prior for that term (I chose `cauchy(0, 1`). We do this by
 specifying two formulas in `brm()`.
@@ -671,7 +671,7 @@ brms_uneq_tidy
     ## 4 b_sigma_genreAction  -0.0199    0.0702   -0.161     0.113
 
 For mathy reasons (again, [see Matti Vourre’s
-post](https://vuorre.netlify.com/post/2017/01/02/how-to-compare-two-groups-with-robust-bayesian-estimation-using-r-stan-and-brms/#unequal-variances-model)),
+post](https://vuorre.netlify.com/posts/2017/01/02/how-to-compare-two-groups-with-robust-bayesian-estimation-using-r-stan-and-brms/#unequal-variances-model)),
 the sigma terms are on a log scale, so we need to exponentiate them back
 to the scale of the data.
 
@@ -702,7 +702,7 @@ A more robust way of estimating group differences Bayesianly is to use
 John Kruschke’s [Bayesian Estimation Supersedes the t Test
 (BEST)](http://www.indiana.edu/~kruschke/BEST/) method. I’m 100% not
 going into the nitty gritty details of this ([Matti Vuorre has,
-though](https://vuorre.netlify.com/post/2017/01/02/how-to-compare-two-groups-with-robust-bayesian-estimation-using-r-stan-and-brms/#robust-bayesian-estimation)).
+though](https://vuorre.netlify.com/posts/2017/01/02/how-to-compare-two-groups-with-robust-bayesian-estimation-using-r-stan-and-brms/#robust-bayesian-estimation)).
 In the most simplest terms, the only difference between BEST and the
 unequal variance regression above is that we model the data with a t
 distribution, which means we have a new parameter, \(\nu\) (nu), that
